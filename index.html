@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnVia - Learn Together</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for chat window */
+        #chat-window::-webkit-scrollbar {
+            width: 6px;
+        }
+        #chat-window::-webkit-scrollbar-track {
+            background: #1f2937; /* bg-gray-800 */
+        }
+        #chat-window::-webkit-scrollbar-thumb {
+            background: #4f46e5; /* bg-indigo-600 */
+            border-radius: 3px;
+        }
+        #chat-window::-webkit-scrollbar-thumb:hover {
+            background: #6366f1; /* bg-indigo-500 */
+        }
+        /* Simple pulse animation for AI "thinking" */
+        .thinking-bubble {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        /* Style for AI message buttons */
+        .ai-action-btn {
+            background-color: #4f46e5; /* bg-indigo-600 */
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.875rem; /* 14px */
+            transition: background-color 0.2s;
+        }
+        .ai-action-btn:hover {
+            background-color: #4338ca; /* bg-indigo-700 */
+        }
+        .secondary-action-btn {
+            background-color: #374151; /* bg-gray-700 */
+            color: #d1d5db; /* text-gray-300 */
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            border: 1px solid #4b5563;
+            transition: background-color 0.2s;
+        }
+        .secondary-action-btn:hover {
+            background-color: #4b5563;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col h-screen overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-gray-900 text-center py-4 border-b border-gray-700 flex items-center justify-between px-4 md:px-6 relative z-20">
+        <!-- Menu Button -->
+        <button id="menu-btn" class="text-gray-400 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
+        
+        <!-- Title -->
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-indigo-400">LearnVia</h1>
+            <p class="text-sm text-gray-400 hidden md:block">Your AI-powered peer-learning companion</p>
+        </div>
+        
+        <!-- Profile Button & Dropdown Container -->
+        <div class="relative" id="profile-container">
+            <button id="profile-btn" class="text-gray-400 hover:text-white transition-colors focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </button>
+            
+            <!-- Profile Dropdown Menu -->
+            <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-700">
+                <button id="update-profile-btn" class="flex items-center w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3 feather feather-message-square"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    Chat with AI to update profile
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden transition-opacity opacity-0"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-80 bg-gray-800 border-r border-gray-700 z-40
+                             transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        
+        <div class="p-4 flex justify-between items-center border-b border-gray-700 bg-gray-900">
+            <h2 class="text-lg font-semibold text-white">Menu</h2>
+            <button id="close-sidebar-btn" class="text-gray-400 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Scrollable Content Area -->
+        <div class="flex-1 overflow-y-auto">
+            
+            <!-- Manual Search Section (Hidden by default) -->
+            <div id="manual-search-section" class="hidden border-b border-gray-700 bg-gray-800/50">
+                <div class="p-4 bg-indigo-900/20">
+                    <h3 class="text-sm font-semibold text-indigo-400 mb-3 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 feather feather-search"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        Find Peers Manually
+                    </h3>
+                    
+                    <!-- Filters -->
+                    <div class="space-y-3 mb-4">
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Filter by Skill</label>
+                            <select class="w-full bg-gray-700 border border-gray-600 rounded text-sm p-2 text-white focus:ring-1 focus:ring-indigo-500">
+                                <option>Programming</option>
+                                <option>Music</option>
+                                <option>Languages</option>
+                                <option>Cooking</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Experience Level</label>
+                            <select class="w-full bg-gray-700 border border-gray-600 rounded text-sm p-2 text-white focus:ring-1 focus:ring-indigo-500">
+                                <option>Any Level</option>
+                                <option>Beginner</option>
+                                <option>Intermediate</option>
+                                <option>Expert</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Manual Results List -->
+                    <h4 class="text-xs font-semibold text-gray-300 mb-2 uppercase tracking-wide">Results</h4>
+                    <div class="space-y-2" id="manual-results-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connections List Section -->
+            <div class="p-4">
+                <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Your Connections</h2>
+                <div id="connections-list" class="space-y-3">
+                    <!-- Connections will be dynamically added here -->
+                    <p id="no-connections-msg" class="text-gray-500 text-sm italic text-center py-4">No active connections yet.</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Chat Window -->
+    <main id="chat-window" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
+        <!-- Messages will be dynamically injected here -->
+    </main>
+
+    <!-- Input Area -->
+    <footer class="bg-gray-800 p-4 border-t border-gray-700">
+        <!-- Placeholder Suggestions -->
+        <div class="flex justify-center items-center space-x-2 pb-3 text-xs">
+            <button class="suggestion-chip bg-gray-700 hover:bg-gray-600 rounded-full px-3 py-1 cursor-pointer transition-colors">"I want to learn Python"</button>
+            <button class="suggestion-chip bg-gray-700 hover:bg-gray-600 rounded-full px-3 py-1 cursor-pointer transition-colors hidden md:block">"I want to learn guitar"</button>
+            <button class="suggestion-chip bg-gray-700 hover:bg-gray-600 rounded-full px-3 py-1 cursor-pointer transition-colors">"Find me a peer"</button>
+        </div>
+
+        <!-- Chat Input Form -->
+        <form id="chat-form" class="flex items-center space-x-3">
+            <input type="text" id="chat-input"
+                   class="flex-1 bg-gray-700 border border-gray-600 rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                   placeholder="Type what you want to learn...">
+            <button type="submit" id="send-btn"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg p-3 flex-shrink-0 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </form>
+    </footer>
+
+    <script>
+        // Get DOM elements
+        const chatWindow = document.getElementById('chat-window');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const suggestionChips = document.querySelectorAll('.suggestion-chip');
+        
+        // Sidebar DOM elements
+        const menuBtn = document.getElementById('menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        const connectionsList = document.getElementById('connections-list');
+        const noConnectionsMsg = document.getElementById('no-connections-msg');
+        
+        // Manual Search DOM Elements
+        const manualSearchSection = document.getElementById('manual-search-section');
+        const manualResultsList = document.getElementById('manual-results-list');
+
+        // Profile Dropdown DOM elements
+        const profileBtn = document.getElementById('profile-btn');
+        const profileDropdown = document.getElementById('profile-dropdown');
+        const updateProfileBtn = document.getElementById('update-profile-btn');
+        const profileContainer = document.getElementById('profile-container');
+
+        let currentSkill = ''; 
+        let userPersonality = null; 
+
+        // --- Sidebar Logic ---
+        function toggleSidebar() {
+            sidebar.classList.toggle('-translate-x-full');
+            sidebar.classList.toggle('translate-x-0');
+            
+            overlay.classList.toggle('hidden');
+            overlay.classList.toggle('opacity-0');
+            overlay.classList.toggle('opacity-100');
+        }
+
+        function openManualSearch() {
+            // Ensure sidebar is open
+            if (sidebar.classList.contains('-translate-x-full')) {
+                toggleSidebar();
+            }
+            // Show search section
+            manualSearchSection.classList.remove('hidden');
+            // Populate dummy results if empty
+            if (manualResultsList.children.length === 0) {
+                populateManualResults();
+            }
+        }
+
+        menuBtn.addEventListener('click', toggleSidebar);
+        overlay.addEventListener('click', toggleSidebar);
+        closeSidebarBtn.addEventListener('click', toggleSidebar);
+        // --- End Sidebar Logic ---
+
+        // --- Profile Dropdown Logic ---
+        function toggleProfileDropdown() {
+            profileDropdown.classList.toggle('hidden');
+        }
+
+        profileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleProfileDropdown();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!profileContainer.contains(e.target)) {
+                profileDropdown.classList.add('hidden');
+            }
+        });
+
+        updateProfileBtn.addEventListener('click', () => {
+            toggleProfileDropdown(); 
+            startVoiceSetup();
+        });
+        // --- End Profile Dropdown Logic ---
+
+
+        // Initial welcome message
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                addAiMessage("Hello! I'm LearnVia's AI assistant. What skill are you interested in learning today? You can type, or use one of the suggestions below.");
+            }, 500);
+        });
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleUserInput();
+        });
+
+        suggestionChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                const suggestionText = chip.textContent.replace(/"/g, ''); 
+                chatInput.value = suggestionText;
+                handleUserInput();
+            });
+        });
+
+        function handleUserInput() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            addUserMessage(message);
+            chatInput.value = '';
+            chatInput.focus();
+
+            simulateAiResponse(message.toLowerCase());
+        }
+
+        function simulateAiResponse(message) {
+            const thinkingId = 'thinking-' + Date.now();
+            addAiMessage("...", "thinking-bubble", thinkingId);
+
+            let response = "That's an interesting topic! Can you tell me more about your goals?";
+            let delay = 1200;
+            let actions = null;
+
+            if (message.includes('python') || message.includes('javascript') ||
+                message.includes('guitar') || message.includes('music') ||
+                message.includes('spanish') || message.includes('language') ||
+                message.includes('baking') || message.includes('cooking') ||
+                message.includes('skill')) {
+                
+                if (message.includes('python') || message.includes('javascript')) currentSkill = 'programming';
+                else if (message.includes('guitar') || message.includes('music')) currentSkill = 'music';
+                else if (message.includes('spanish') || message.includes('language')) currentSkill = 'language';
+                else if (message.includes('baking') || message.includes('cooking')) currentSkill = 'cooking';
+                else currentSkill = 'general';
+                
+                response = `Great choice! ${currentSkill.charAt(0).toUpperCase() + currentSkill.slice(1)} is a fantastic skill. What's your current experience level with that? (e.g., beginner, intermediate, advanced)`;
+
+            } else if (message.includes('beginner') || message.includes('intermediate') || message.includes('advanced')) {
+                response = "Got it. I can offer you some top-rated articles, video tutorials, or I can try to find a live peer who is also at your level. What do you prefer?";
+            } else if (message.includes('peer') || message.includes('live') || message.includes('connect')) {
+                
+                if (!userPersonality) {
+                    response = "Before I can find the best peers, I recommend setting up your learner profile so I can match based on personality. You can do this anytime from the profile menu in the top right.";
+                    setTimeout(() => {
+                         addAiMessage("For now, to find a match, are you looking for a fellow **learner** to study with, or an **expert** you can learn from (in exchange for a skill you can teach)?");
+                    }, 2000);
+                    delay = 1000; 
+                } else {
+                    response = "Got it! Our app is all about skill exchange. To find the best match, are you looking for a fellow **learner** to study with, or an **expert** you can learn from (in exchange for a skill you can teach)?";
+                }
+            
+            } else if (message.includes('learner') || message.includes('expert') || message.includes('study') || message.includes('exchange')) {
+                delay = 3000;
+                response = "Perfect! Searching for available peers based on your preference... This may take a moment.";
+
+                setTimeout(() => {
+                    removeMessage(thinkingId);
+                    addAiMessage(response);
+                    
+                    const searchingId = 'searching-' + Date.now();
+                    setTimeout(() => {
+                        addAiMessage("...", "thinking-bubble", searchingId);
+                    }, 500);
+
+                    setTimeout(() => {
+                        removeMessage(searchingId);
+                        // Using wide=true for profiles
+                        addAiMessage("Success!", "html", null, createPeerProfilesHtml(currentSkill, userPersonality), null, true);
+                    }, 3500);
+
+                }, 1000);
+                return; 
+
+            } else if (message.includes('hello') || message.includes('hi')) {
+                response = "Hello again! What new skill are you excited to learn today?";
+            }
+
+            setTimeout(() => {
+                removeMessage(thinkingId);
+                addAiMessage(response, 'text', null, null, actions);
+            }, delay);
+        }
+
+        // --- Manual Search Functionality ---
+        function populateManualResults() {
+            const sampleUsers = [
+                { name: "David K.", role: "Expert", skill: "Python", img: "https://randomuser.me/api/portraits/men/33.jpg" },
+                { name: "Elena R.", role: "Learner", skill: "Spanish", img: "https://randomuser.me/api/portraits/women/55.jpg" },
+                { name: "Marcus T.", role: "Expert", skill: "React", img: "https://randomuser.me/api/portraits/men/22.jpg" },
+                { name: "Sophie L.", role: "Learner", skill: "Guitar", img: "https://randomuser.me/api/portraits/women/12.jpg" }
+            ];
+
+            let html = '';
+            sampleUsers.forEach(u => {
+                html += `
+                    <div class="flex items-center p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer" onclick="selectPeer('${u.name}')">
+                        <img src="${u.img}" class="w-8 h-8 rounded-full mr-3">
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium text-xs text-white">${u.name}</span>
+                                <span class="text-[10px] bg-gray-900 px-1 rounded text-gray-400">${u.role}</span>
+                            </div>
+                            <span class="text-[10px] text-gray-400">${u.skill}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            manualResultsList.innerHTML = html;
+        }
+
+        function loadMoreProfiles(btn) {
+            btn.innerHTML = "Loading...";
+            setTimeout(() => {
+                // Simulate adding 2 more random profiles
+                const extraProfiles = `
+                    <!-- Extra Peer 1 -->
+                    <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex-1 flex flex-col min-w-[250px]">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <img src="https://randomuser.me/api/portraits/men/67.jpg" class="w-12 h-12 rounded-full border-2 border-indigo-500">
+                            <div>
+                                <h4 class="font-semibold text-white">James R. (Learner)</h4>
+                                <span class="text-xs text-green-400">Online - New</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-300 flex-1 mb-3">
+                            "Just starting out. Looking for a study group."
+                        </p>
+                        <button onclick="selectPeer('James R.')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-lg text-sm font-medium transition-colors">Connect</button>
+                    </div>
+                    <!-- Extra Peer 2 -->
+                    <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex-1 flex flex-col min-w-[250px]">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <img src="https://randomuser.me/api/portraits/women/89.jpg" class="w-12 h-12 rounded-full border-2 border-indigo-500">
+                            <div>
+                                <h4 class="font-semibold text-white">Nina P. (Expert)</h4>
+                                <span class="text-xs text-green-400">Online - Teaching</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-300 flex-1 mb-3">
+                            "Professional developer. Happy to do code reviews."
+                        </p>
+                        <button onclick="selectPeer('Nina P.')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-lg text-sm font-medium transition-colors">Connect</button>
+                    </div>
+                `;
+                
+                const profileContainer = btn.closest('.bg-gray-700').querySelector('.flex-col.md\\:flex-row');
+                profileContainer.insertAdjacentHTML('beforeend', extraProfiles);
+                btn.remove(); // Remove "Show More" after clicking
+            }, 1000);
+        }
+
+        // --- Voice Profile Setup Logic (Same as before) ---
+        function startVoiceSetup() {
+            addUserMessage("I'd like to update my profile.");
+            let callTime = 120; // 2 minutes
+            const callId = 'call-' + Date.now();
+            addAiMessage(`Starting voice setup... Please speak freely. (Simulated duration: 2:00)`, 'html', callId);
+
+            function updateCallTimer() {
+                callTime--;
+                const minutes = Math.floor(callTime / 60);
+                const seconds = callTime % 60;
+                const timerEl = document.getElementById(callId);
+                if (timerEl) {
+                    const innerDiv = timerEl.querySelector('div');
+                    if (innerDiv) innerDiv.innerHTML = `Starting voice setup... Please speak freely. (Simulated duration: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')})`;
+                }
+                if (callTime > 0) setTimeout(updateCallTimer, 1000);
+            }
+            setTimeout(updateCallTimer, 1000);
+
+            setTimeout(() => addAiMessage("First question: What gets you most excited about learning a new skill?"), 2500);
+            setTimeout(() => addUserMessage("(simulated) Oh, I'm really excited to build something tangible. I'm a very hands-on person."), 5000);
+            setTimeout(() => addAiMessage("That's great! And how do you best learn? By doing, by watching videos, or by reading documentation?"), 6000);
+            setTimeout(() => addUserMessage("(simulated) Definitely by doing. I like to just jump in and get my hands dirty, even if I make mistakes."), 8500);
+            
+            setTimeout(() => {
+                callTime = 0;
+                removeMessage(callId);
+                addAiMessage("...", "thinking-bubble", "profile-analysis");
+            }, 10000); // Shortened for demo speed
+
+            setTimeout(() => {
+                removeMessage("profile-analysis");
+                userPersonality = 'creative_hands_on'; 
+                addAiMessage("✅ **Profile setup complete!**<br><br>Analyzing your responses... I've created your profile. I'm detecting a **'Creative & Hands-On'** personality type.", 'html');
+            }, 12000);
+        }
+
+        function selectPeer(peerName) {
+            addUserMessage(`I'd like to connect with ${peerName}.`);
+            
+            const proposalId = 'proposal-' + Date.now();
+            addAiMessage("...", "thinking-bubble", proposalId);
+
+            setTimeout(() => {
+                removeMessage(proposalId);
+                addAiMessage(`Great choice! I am sending a connection proposal to ${peerName} now. This may take a moment...`);
+            }, 1500);
+
+            const acceptanceId = 'acceptance-' + Date.now();
+            setTimeout(() => {
+                addAiMessage("...", "thinking-bubble", acceptanceId);
+            }, 3000);
+
+            setTimeout(() => {
+                removeMessage(acceptanceId);
+                if (Math.random() > 0.1) { 
+                    addAiMessage(`🎉 **Good news! ${peerName} has accepted your proposal.** 🎉<br><br>You are now connected!`, "html");
+                    addConnectionToSidebar(peerName);
+                } else { 
+                    addAiMessage(`Unfortunately, ${peerName} is busy. Try someone else?`, "html");
+                }
+            }, 5000);
+        }
+
+        // --- Message Functions ---
+        function addUserMessage(message) {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'flex justify-end';
+            messageEl.innerHTML = `<div class="bg-indigo-600 text-white p-3 rounded-lg max-w-xs md:max-w-md shadow-md">${message}</div>`;
+            chatWindow.appendChild(messageEl);
+            scrollToBottom();
+        }
+
+        // UPDATED addAiMessage with isWide parameter
+        function addAiMessage(message, type = 'text', id = null, contentOverride = null, actions = null, isWide = false) {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'flex justify-start w-full'; // Ensure container spans full width
+            if (id) messageEl.id = id;
+
+            let messageContent = contentOverride ? contentOverride : message;
+            if (type === 'thinking-bubble') {
+                messageEl.classList.add('thinking-bubble');
+                messageContent = message;
+            }
+
+            if (actions && Array.isArray(actions)) {
+                let actionsHtml = '<div class="mt-3 flex flex-wrap gap-2">';
+                actions.forEach(action => {
+                    actionsHtml += `<button onclick="${action.onclick}" class="ai-action-btn">${action.label}</button>`;
+                });
+                actionsHtml += '</div>';
+                messageContent += actionsHtml;
+            }
+            
+            // Width Logic: Default is max-w-md, Wide is max-w-4xl (wider)
+            const maxWidthClass = isWide ? 'max-w-4xl w-full' : 'max-w-xs md:max-w-md';
+
+            messageEl.innerHTML = `
+                <div class="bg-gray-700 text-white p-3 rounded-lg shadow-md ${maxWidthClass}">
+                    ${messageContent}
+                </div>
+            `;
+            chatWindow.appendChild(messageEl);
+            scrollToBottom();
+        }
+        
+        function removeMessage(id) {
+            const message = document.getElementById(id);
+            if (message) message.remove();
+        }
+
+        function scrollToBottom() {
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function addConnectionToSidebar(peerName) {
+            if (noConnectionsMsg) noConnectionsMsg.style.display = 'none';
+            const connectionEl = document.createElement('div');
+            connectionEl.className = 'flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-700 cursor-pointer transition-colors';
+            
+            // Use randomuser for connection avatar or placeholder if not found
+            // Simple hash for consistent gender/index
+            const hash = peerName.length % 2 === 0 ? 'men' : 'women';
+            const index = peerName.length % 50;
+            const imgSrc = `https://randomuser.me/api/portraits/${hash}/${index}.jpg`;
+            
+            connectionEl.innerHTML = `
+                <div class="relative">
+                    <img src="${imgSrc}" class="w-10 h-10 rounded-full border border-gray-600">
+                    <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-gray-800 rounded-full"></span>
+                </div>
+                <div>
+                    <h5 class="font-medium text-white text-sm">${peerName}</h5>
+                    <p class="text-[10px] text-green-400">Online</p>
+                </div>
+            `;
+            connectionsList.appendChild(connectionEl);
+        }
+
+        function createPeerProfilesHtml(skill, personality) {
+            let profilesHtml = '';
+            const getMatchBadge = (peerPersonality) => {
+                if (personality && peerPersonality === personality) {
+                    return '<span class="ml-2 text-[10px] font-bold bg-gradient-to-r from-green-400 to-blue-500 text-black px-2 py-0.5 rounded-full shadow-lg">✨ Match</span>';
+                }
+                return '';
+            };
+
+            // Using RandomUser Images
+            // Alex: Men 32, Sarah: Women 44, Mikey: Men 85, etc.
+            
+            switch (skill) {
+                case 'programming':
+                    profilesHtml = `
+                        <!-- Peer 1 -->
+                        <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex-1 flex flex-col min-w-[250px]">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <img src="https://randomuser.me/api/portraits/men/32.jpg" class="w-12 h-12 rounded-full border-2 border-indigo-500 shadow-sm">
+                                <div>
+                                    <h4 class="font-semibold text-white">Alex M. (Learner) ${getMatchBadge('creative_hands_on')}</h4>
+                                    <span class="text-xs text-green-400">Online</span>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-300 flex-1 mb-3">"Just started with Python, looking for a study buddy for algorithms."</p>
+                            <button onclick="selectPeer('Alex M.')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-lg text-sm font-medium transition-colors">Connect</button>
+                        </div>
+                        <!-- Peer 2 -->
+                        <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex-1 flex flex-col min-w-[250px]">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <img src="https://randomuser.me/api/portraits/women/44.jpg" class="w-12 h-12 rounded-full border-2 border-purple-500 shadow-sm">
+                                <div>
+                                    <h4 class="font-semibold text-white">Sarah K. (Expert) ${getMatchBadge('analytical_reader')}</h4>
+                                    <span class="text-xs text-green-400">Teaching</span>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-300 flex-1 mb-3">"JS expert (10+ yrs). Happy to mentor in exchange for Spanish help."</p>
+                            <button onclick="selectPeer('Sarah K.')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-lg text-sm font-medium transition-colors">Connect</button>
+                        </div>
+                        <!-- Peer 3 -->
+                        <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex-1 flex flex-col min-w-[250px]">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <img src="https://randomuser.me/api/portraits/men/85.jpg" class="w-12 h-12 rounded-full border-2 border-indigo-500 shadow-sm">
+                                <div>
+                                    <h4 class="font-semibold text-white">Mikey T. (Expert) ${getMatchBadge('creative_hands_on')}</h4>
+                                    <span class="text-xs text-green-400">Exchange</span>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-300 flex-1 mb-3">"Senior Designer. Teaching Figma, learning Python."</p>
+                            <button onclick="selectPeer('Mikey T.')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-lg text-sm font-medium transition-colors">Connect</button>
+                        </div>`;
+                    break;
+                // Add other cases (music, language etc) similarly with different random images
+                default: 
+                     profilesHtml = `
+                        <!-- Default Peer 1 -->
+                        <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex-1 flex flex-col min-w-[250px]">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <img src="https://randomuser.me/api/portraits/men/11.jpg" class="w-12 h-12 rounded-full border-2 border-indigo-500">
+                                <div>
+                                    <h4 class="font-semibold text-white">Tom D. (Learner) ${getMatchBadge('creative_hands_on')}</h4>
+                                    <span class="text-xs text-green-400">Online</span>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-300 flex-1 mb-3">"Learning basics. Need a partner."</p>
+                            <button onclick="selectPeer('Tom D.')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-lg text-sm font-medium transition-colors">Connect</button>
+                        </div>
+                        <!-- Default Peer 2 -->
+                        <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex-1 flex flex-col min-w-[250px]">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <img src="https://randomuser.me/api/portraits/women/22.jpg" class="w-12 h-12 rounded-full border-2 border-indigo-500">
+                                <div>
+                                    <h4 class="font-semibold text-white">Aisha C. (Expert) ${getMatchBadge('analytical_reader')}</h4>
+                                    <span class="text-xs text-green-400">Teaching</span>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-300 flex-1 mb-3">"Pro. Willing to exchange skills."</p>
+                            <button onclick="selectPeer('Aisha C.')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-lg text-sm font-medium transition-colors">Connect</button>
+                        </div>
+                        <!-- Default Peer 3 -->
+                        <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex-1 flex flex-col min-w-[250px]">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <img src="https://randomuser.me/api/portraits/men/33.jpg" class="w-12 h-12 rounded-full border-2 border-indigo-500">
+                                <div>
+                                    <h4 class="font-semibold text-white">Marco J. (Learner) ${getMatchBadge('social_learner')}</h4>
+                                    <span class="text-xs text-yellow-400">Away</span>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-300 flex-1 mb-3">"Open to chatting about strategies."</p>
+                            <button onclick="selectPeer('Marco J.')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-lg text-sm font-medium transition-colors">Connect</button>
+                        </div>`;
+            }
+
+            return `
+                <p class="mb-3">Success! I've found peers matching your request. Review their profiles below:</p>
+                <!-- Wide Container for profiles -->
+                <div class="flex flex-col md:flex-row gap-3 mt-3 flex-wrap">
+                    ${profilesHtml}
+                </div>
+                
+                <!-- Action Buttons Area -->
+                <div class="mt-4 pt-4 border-t border-gray-600 flex flex-wrap gap-3">
+                    <button onclick="loadMoreProfiles(this)" class="secondary-action-btn flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 feather feather-plus-circle"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                        Show More Peers
+                    </button>
+                    <button onclick="openManualSearch()" class="secondary-action-btn flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 feather feather-search"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        Search Manually
+                    </button>
+                </div>
+            `;
+        }
+
+    </script>
+</body>
+</html>
